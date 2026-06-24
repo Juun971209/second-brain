@@ -621,7 +621,7 @@ async function fetchCategoryNotes(owner, repo, branch, token, category) {
     .filter((f) => f.type === "file")
     .map((f) => {
       const parsed = parseNoteFilename(category, f.name);
-      return parsed && { ...parsed, path: f.path, sha: f.sha, download_url: f.download_url };
+      return parsed && { ...parsed, path: f.path, sha: f.sha };
     })
     .filter(Boolean);
 }
@@ -751,14 +751,14 @@ async function openNoteDetail(note) {
   currentDetailNote = null;
 
   try {
-    const { token } = getSettings();
-    let res = await fetch(note.download_url, token ? { headers: { Authorization: `token ${token}` } } : {});
-    if (!res.ok && token && (res.status === 401 || res.status === 403)) {
-      console.warn(`GitHub ${res.status} with saved token, retrying ${note.download_url} without it`);
-      res = await fetch(note.download_url);
-    }
-    if (!res.ok) throw new Error(`GitHub ${res.status}: ${await res.text()}`);
-    const raw = await res.text();
+    const { owner, repo, branch, token } = getSettings();
+    const res = await githubGetRaw(
+      `https://api.github.com/repos/${owner}/${repo}/contents/${note.path}?ref=${branch}`,
+      token
+    );
+    if (!res.ok) throw new Error(`GitHub API ${res.status}: ${await res.text()}`);
+    const data = await res.json();
+    const raw = base64ToUtf8(data.content);
     const { meta, body } = parseFrontmatter(raw);
 
     const title = meta.title || note.title;
@@ -766,7 +766,7 @@ async function openNoteDetail(note) {
     const category = meta.category || note.category;
     noteDetailMeta.textContent = `${category} · ${date}`;
 
-    currentDetailNote = { path: note.path, sha: note.sha, title, date, category, rawBody: body.trim() };
+    currentDetailNote = { path: note.path, sha: data.sha, title, date, category, rawBody: body.trim() };
 
     renderDetailContent(title, body);
   } catch (err) {
