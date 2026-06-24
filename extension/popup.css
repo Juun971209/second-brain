@@ -25,6 +25,12 @@
 
 * { box-sizing: border-box; }
 
+html, body {
+  /* Chrome caps popup windows around 600px tall regardless of CSS; let the
+     body scroll internally instead of clipping content past that cap. */
+  max-height: 600px;
+}
+
 body {
   margin: 0;
   width: 360px;
@@ -32,6 +38,7 @@ body {
   background: var(--bg);
   color: var(--text);
   line-height: 1.5;
+  overflow-y: auto;
 }
 
 .nav {
@@ -92,6 +99,15 @@ textarea {
   font-size: 0.88rem;
   font-family: inherit;
   resize: vertical;
+}
+
+textarea {
+  overflow-y: auto;
+}
+
+#excerpt {
+  min-height: 260px;
+  max-height: 340px;
 }
 
 input:focus, select:focus, textarea:focus {
