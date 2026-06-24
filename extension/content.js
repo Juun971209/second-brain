@@ -44,12 +44,8 @@
       .trim();
   }
 
-  const MAX_LENGTH = 4000;
   const root = findMainNode();
-  let excerpt = extractText(root);
-  if (excerpt.length > MAX_LENGTH) {
-    excerpt = excerpt.slice(0, MAX_LENGTH).trim() + "\n\n…(이하 생략)";
-  }
+  const excerpt = extractText(root);
 
   chrome.runtime.sendMessage({
     type: "SB_EXTRACTED_CONTENT",
