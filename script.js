@@ -237,6 +237,7 @@ form.addEventListener("submit", async (e) => {
     form.reset();
     categorySelect.value = category;
     updatePathPreview();
+    notesLoaded = false;
   } catch (err) {
     console.error(err);
     setStatus("저장 실패: 토큰 권한 또는 저장소 설정을 확인해주세요.", "error");
@@ -244,3 +245,190 @@ form.addEventListener("submit", async (e) => {
     saveBtn.disabled = false;
   }
 });
+
+// --- View switching (write / browse / detail) ---
+const tabWrite = document.getElementById("tabWrite");
+const tabBrowse = document.getElementById("tabBrowse");
+const writeView = document.getElementById("writeView");
+const browseView = document.getElementById("browseView");
+const detailView = document.getElementById("detailView");
+
+function showView(view) {
+  writeView.hidden = view !== "write";
+  browseView.hidden = view !== "browse";
+  detailView.hidden = view !== "detail";
+  tabWrite.classList.toggle("active", view === "write");
+  tabWrite.setAttribute("aria-selected", view === "write");
+  tabBrowse.classList.toggle("active", view !== "write");
+  tabBrowse.setAttribute("aria-selected", view !== "write");
+}
+
+tabWrite.addEventListener("click", () => showView("write"));
+tabBrowse.addEventListener("click", () => {
+  showView("browse");
+  if (!notesLoaded) loadAllNotes();
+});
+
+// --- Note browsing ---
+const CATEGORIES = ["clients", "insights", "templates", "study", "prompts", "logs"];
+const searchInput = document.getElementById("searchInput");
+const categoryTabsEl = document.getElementById("categoryTabs");
+const noteListEl = document.getElementById("noteList");
+const browseStatusEl = document.getElementById("browseStatus");
+const backBtn = document.getElementById("backBtn");
+const noteDetailMeta = document.getElementById("noteDetailMeta");
+const noteDetailContent = document.getElementById("noteDetailContent");
+
+let allNotes = [];
+let notesLoaded = false;
+let activeCategory = "all";
+
+function setBrowseStatus(message, kind) {
+  browseStatusEl.textContent = message;
+  browseStatusEl.className = "status-msg" + (kind ? ` ${kind}` : "");
+}
+
+function parseNoteFilename(category, name) {
+  const match = name.match(/^(\d{4}-\d{2}-\d{2})-(.+)\.md$/);
+  if (!match) return null;
+  return { category, name, date: match[1], title: match[2].replace(/-/g, " ") };
+}
+
+async function fetchCategoryNotes(owner, repo, branch, token, category) {
+  const headers = { Accept: "application/vnd.github+json" };
+  if (token) headers.Authorization = `token ${token}`;
+
+  const res = await fetch(
+    `https://api.github.com/repos/${owner}/${repo}/contents/${category}?ref=${branch}`,
+    { headers }
+  );
+  if (res.status === 404) return [];
+  if (!res.ok) throw new Error(`GitHub API ${res.status}`);
+
+  const files = await res.json();
+  return files
+    .filter((f) => f.type === "file")
+    .map((f) => {
+      const parsed = parseNoteFilename(category, f.name);
+      return parsed && { ...parsed, path: f.path, download_url: f.download_url };
+    })
+    .filter(Boolean);
+}
+
+async function loadAllNotes() {
+  const { owner, repo, branch, token } = getSettings();
+  if (!token) {
+    setBrowseStatus("먼저 ⚙️ 설정에서 GitHub 토큰을 등록해주세요.", "error");
+    return;
+  }
+
+  setBrowseStatus("노트를 불러오는 중...", "");
+  try {
+    const results = await Promise.all(
+      CATEGORIES.map((c) => fetchCategoryNotes(owner, repo, branch, token, c))
+    );
+    allNotes = results.flat().sort((a, b) => b.date.localeCompare(a.date));
+    notesLoaded = true;
+    setBrowseStatus("", "");
+    renderNoteList();
+  } catch (err) {
+    console.error(err);
+    setBrowseStatus("노트를 불러오지 못했어요. 토큰 권한을 확인해주세요.", "error");
+  }
+}
+
+function renderNoteList() {
+  const query = searchInput.value.trim().toLowerCase();
+  const filtered = allNotes.filter((n) => {
+    const matchesCategory = activeCategory === "all" || n.category === activeCategory;
+    const matchesQuery = !query || n.title.toLowerCase().includes(query);
+    return matchesCategory && matchesQuery;
+  });
+
+  noteListEl.innerHTML = "";
+
+  if (filtered.length === 0) {
+    setBrowseStatus(notesLoaded ? "조건에 맞는 노트가 없어요." : "", "");
+    return;
+  }
+  setBrowseStatus("", "");
+
+  for (const note of filtered) {
+    const li = document.createElement("li");
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "note-item";
+
+    const titleEl = document.createElement("div");
+    titleEl.className = "note-item-title";
+    titleEl.textContent = note.title;
+
+    const metaEl = document.createElement("div");
+    metaEl.className = "note-item-meta";
+    metaEl.textContent = `${note.category} · ${note.date}`;
+
+    btn.appendChild(titleEl);
+    btn.appendChild(metaEl);
+    btn.addEventListener("click", () => openNoteDetail(note));
+    li.appendChild(btn);
+    noteListEl.appendChild(li);
+  }
+}
+
+categoryTabsEl.addEventListener("click", (e) => {
+  const btn = e.target.closest(".cat-tab");
+  if (!btn) return;
+  activeCategory = btn.dataset.category;
+  categoryTabsEl
+    .querySelectorAll(".cat-tab")
+    .forEach((b) => b.classList.toggle("active", b === btn));
+  renderNoteList();
+});
+
+searchInput.addEventListener("input", renderNoteList);
+
+function parseFrontmatter(raw) {
+  const match = raw.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
+  if (!match) return { meta: {}, body: raw };
+  const meta = {};
+  for (const line of match[1].split("\n")) {
+    const i = line.indexOf(":");
+    if (i === -1) continue;
+    meta[line.slice(0, i).trim()] = line.slice(i + 1).trim();
+  }
+  return { meta, body: match[2] };
+}
+
+async function openNoteDetail(note) {
+  showView("detail");
+  noteDetailMeta.textContent = "";
+  noteDetailContent.textContent = "불러오는 중...";
+
+  try {
+    const { token } = getSettings();
+    const headers = {};
+    if (token) headers.Authorization = `token ${token}`;
+
+    const res = await fetch(note.download_url, { headers });
+    if (!res.ok) throw new Error(`GitHub ${res.status}`);
+    const raw = await res.text();
+    const { meta, body } = parseFrontmatter(raw);
+
+    const title = meta.title || note.title;
+    const date = meta.date || note.date;
+    const category = meta.category || note.category;
+    noteDetailMeta.textContent = `${category} · ${date}`;
+
+    const html = marked.parse(body);
+    noteDetailContent.innerHTML = DOMPurify.sanitize(html);
+
+    const heading = document.createElement("h2");
+    heading.textContent = title;
+    noteDetailContent.prepend(heading);
+  } catch (err) {
+    console.error(err);
+    noteDetailContent.textContent = "노트를 불러오지 못했어요.";
+  }
+}
+
+backBtn.addEventListener("click", () => showView("browse"));

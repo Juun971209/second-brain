@@ -21,7 +21,12 @@
   </header>
 
   <main>
-    <section class="writer">
+    <div class="view-tabs" role="tablist">
+      <button id="tabWrite" class="view-tab active" type="button" role="tab" aria-selected="true">✍️ 작성</button>
+      <button id="tabBrowse" class="view-tab" type="button" role="tab" aria-selected="false">📚 조회</button>
+    </div>
+
+    <section class="writer" id="writeView">
       <form id="noteForm">
         <div class="field">
           <label for="category">카테고리</label>
@@ -50,6 +55,31 @@
         <button type="submit" id="saveBtn" class="btn btn-primary btn-block">저장</button>
         <p id="statusMsg" class="status-msg" role="status" aria-live="polite"></p>
       </form>
+    </section>
+
+    <section class="browser" id="browseView" hidden>
+      <div class="search-bar">
+        <input id="searchInput" type="search" placeholder="제목으로 검색..." autocomplete="off" />
+      </div>
+
+      <div class="category-tabs" id="categoryTabs">
+        <button class="cat-tab active" data-category="all" type="button">전체</button>
+        <button class="cat-tab" data-category="clients" type="button">clients</button>
+        <button class="cat-tab" data-category="insights" type="button">insights</button>
+        <button class="cat-tab" data-category="templates" type="button">templates</button>
+        <button class="cat-tab" data-category="study" type="button">study</button>
+        <button class="cat-tab" data-category="prompts" type="button">prompts</button>
+        <button class="cat-tab" data-category="logs" type="button">logs</button>
+      </div>
+
+      <p id="browseStatus" class="status-msg" role="status" aria-live="polite"></p>
+      <ul id="noteList" class="note-list"></ul>
+    </section>
+
+    <section class="note-detail" id="detailView" hidden>
+      <button id="backBtn" class="btn btn-ghost" type="button">← 목록으로</button>
+      <p id="noteDetailMeta" class="note-detail-meta"></p>
+      <article id="noteDetailContent" class="markdown-body"></article>
     </section>
   </main>
 
@@ -100,6 +130,8 @@
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.8/dist/purify.min.js"></script>
   <script src="script.js"></script>
 </body>
 </html>
