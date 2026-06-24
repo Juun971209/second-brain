@@ -1,106 +1,184 @@
-// 노트를 추가하려면 아래 배열에 { title, tag, date, summary } 객체를 추가하세요.
-const NOTES = [
-  {
-    title: "환영합니다 👋",
-    tag: "메모",
-    date: "2026-06-24",
-    summary: "이 노트들은 예시예요. 이 파일(script.js)의 NOTES 배열을 열어서 title, tag, date, summary를 바꾸거나 새 항목을 추가하면 바로 페이지에 반영됩니다.",
-  },
-  {
-    title: "읽고 싶은 책 목록",
-    tag: "독서",
-    date: "2026-06-20",
-    summary: "관심 있는 책들을 여기에 정리해보세요. 다 읽으면 한 줄 후기를 추가해도 좋아요.",
-  },
-  {
-    title: "프로젝트 아이디어",
-    tag: "아이디어",
-    date: "2026-06-18",
-    summary: "떠오르는 아이디어를 가볍게 적어두는 칸. 나중에 다시 볼 때 새로운 영감이 될 수 있어요.",
-  },
-  {
-    title: "오늘 배운 것",
-    tag: "학습",
-    date: "2026-06-15",
-    summary: "매일 배운 것 한 가지씩 짧게 기록해보세요. 작은 기록이 쌓이면 큰 자산이 됩니다.",
-  },
-];
-
-const grid = document.getElementById("notesGrid");
-const emptyState = document.getElementById("emptyState");
-const searchInput = document.getElementById("searchInput");
-const filterTagsEl = document.getElementById("filterTags");
-
-let activeTag = "전체";
-let query = "";
-
-function renderTags() {
-  const tags = ["전체", ...new Set(NOTES.map((n) => n.tag))];
-  filterTagsEl.innerHTML = "";
-  tags.forEach((tag) => {
-    const btn = document.createElement("button");
-    btn.className = "tag-btn" + (tag === activeTag ? " active" : "");
-    btn.textContent = tag;
-    btn.addEventListener("click", () => {
-      activeTag = tag;
-      renderTags();
-      renderNotes();
-    });
-    filterTagsEl.appendChild(btn);
-  });
-}
-
-function renderNotes() {
-  const filtered = NOTES.filter((n) => {
-    const matchesTag = activeTag === "전체" || n.tag === activeTag;
-    const matchesQuery =
-      !query ||
-      n.title.toLowerCase().includes(query) ||
-      n.summary.toLowerCase().includes(query);
-    return matchesTag && matchesQuery;
-  });
-
-  grid.innerHTML = "";
-  emptyState.hidden = filtered.length !== 0;
-
-  filtered.forEach((n) => {
-    const card = document.createElement("article");
-    card.className = "note-card";
-    card.innerHTML = `
-      <h3>${n.title}</h3>
-      <p>${n.summary}</p>
-      <div class="note-meta">
-        <span class="note-tag">${n.tag}</span>
-        <span>${n.date}</span>
-      </div>
-    `;
-    grid.appendChild(card);
-  });
-}
-
-searchInput.addEventListener("input", (e) => {
-  query = e.target.value.trim().toLowerCase();
-  renderNotes();
-});
-
-renderTags();
-renderNotes();
-
-// Theme toggle
-const themeToggle = document.getElementById("themeToggle");
+// --- Theme toggle ---
 const root = document.documentElement;
+const themeToggle = document.getElementById("themeToggle");
 
 function applyTheme(theme) {
   root.setAttribute("data-theme", theme);
   localStorage.setItem("theme", theme);
 }
 
-const savedTheme =
+applyTheme(
   localStorage.getItem("theme") ||
-  (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-applyTheme(savedTheme);
+    (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
+);
 
 themeToggle.addEventListener("click", () => {
   const current = root.getAttribute("data-theme");
   applyTheme(current === "dark" ? "light" : "dark");
+});
+
+// --- Settings (GitHub connection) ---
+const settingsOverlay = document.getElementById("settingsOverlay");
+const settingsToggle = document.getElementById("settingsToggle");
+const settingsCancel = document.getElementById("settingsCancel");
+const settingsSave = document.getElementById("settingsSave");
+const ghOwnerInput = document.getElementById("ghOwner");
+const ghRepoInput = document.getElementById("ghRepo");
+const ghBranchInput = document.getElementById("ghBranch");
+const ghTokenInput = document.getElementById("ghToken");
+
+function getSettings() {
+  return {
+    owner: localStorage.getItem("gh_owner") || "Juun971209",
+    repo: localStorage.getItem("gh_repo") || "second-brain",
+    branch: localStorage.getItem("gh_branch") || "main",
+    token: localStorage.getItem("gh_token") || "",
+  };
+}
+
+function openSettings() {
+  const s = getSettings();
+  ghOwnerInput.value = s.owner;
+  ghRepoInput.value = s.repo;
+  ghBranchInput.value = s.branch;
+  ghTokenInput.value = s.token;
+  settingsOverlay.hidden = false;
+}
+
+function closeSettings() {
+  settingsOverlay.hidden = true;
+}
+
+settingsToggle.addEventListener("click", openSettings);
+settingsCancel.addEventListener("click", closeSettings);
+settingsOverlay.addEventListener("click", (e) => {
+  if (e.target === settingsOverlay) closeSettings();
+});
+
+settingsSave.addEventListener("click", () => {
+  localStorage.setItem("gh_owner", ghOwnerInput.value.trim() || "Juun971209");
+  localStorage.setItem("gh_repo", ghRepoInput.value.trim() || "second-brain");
+  localStorage.setItem("gh_branch", ghBranchInput.value.trim() || "main");
+  localStorage.setItem("gh_token", ghTokenInput.value.trim());
+  closeSettings();
+  setStatus("GitHub 연결 정보가 저장되었어요.", "success");
+});
+
+// --- Note form ---
+const form = document.getElementById("noteForm");
+const categorySelect = document.getElementById("category");
+const titleInput = document.getElementById("title");
+const contentInput = document.getElementById("content");
+const pathPreview = document.getElementById("pathPreview");
+const statusMsg = document.getElementById("statusMsg");
+const saveBtn = document.getElementById("saveBtn");
+
+function slugify(str) {
+  return (
+    str
+      .trim()
+      .replace(/[<>:"/\\|?*]+/g, "")
+      .replace(/\s+/g, "-")
+      .slice(0, 60) || "untitled"
+  );
+}
+
+function todayISO() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function buildPath() {
+  const category = categorySelect.value;
+  const slug = slugify(titleInput.value || "untitled");
+  return `${category}/${todayISO()}-${slug}.md`;
+}
+
+function updatePathPreview() {
+  pathPreview.textContent = `저장 위치: ${buildPath()}`;
+}
+
+categorySelect.addEventListener("input", updatePathPreview);
+titleInput.addEventListener("input", updatePathPreview);
+updatePathPreview();
+
+function setStatus(message, kind) {
+  statusMsg.textContent = message;
+  statusMsg.className = "status-msg" + (kind ? ` ${kind}` : "");
+}
+
+function utf8ToBase64(str) {
+  return btoa(unescape(encodeURIComponent(str)));
+}
+
+async function getExistingFileSha(owner, repo, path, token, branch) {
+  const res = await fetch(
+    `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`,
+    { headers: { Authorization: `token ${token}`, Accept: "application/vnd.github+json" } }
+  );
+  if (res.status === 200) {
+    const data = await res.json();
+    return data.sha;
+  }
+  return null;
+}
+
+async function saveNote({ owner, repo, branch, token, path, title, category, body }) {
+  const date = todayISO();
+  const markdown = `---\ntitle: ${title}\ndate: ${date}\ncategory: ${category}\n---\n\n${body}\n`;
+
+  const sha = await getExistingFileSha(owner, repo, path, token, branch);
+
+  const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
+    method: "PUT",
+    headers: {
+      Authorization: `token ${token}`,
+      Accept: "application/vnd.github+json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      message: `Add note: ${title}`,
+      content: utf8ToBase64(markdown),
+      branch,
+      ...(sha ? { sha } : {}),
+    }),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`GitHub API ${res.status}: ${errText}`);
+  }
+
+  return res.json();
+}
+
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const { owner, repo, branch, token } = getSettings();
+  if (!token) {
+    setStatus("먼저 ⚙️ 설정에서 GitHub 토큰을 등록해주세요.", "error");
+    openSettings();
+    return;
+  }
+
+  const title = titleInput.value.trim();
+  const category = categorySelect.value;
+  const body = contentInput.value.trim();
+  const path = buildPath();
+
+  saveBtn.disabled = true;
+  setStatus("저장 중...", "");
+
+  try {
+    await saveNote({ owner, repo, branch, token, path, title, category, body });
+    setStatus(`저장 완료: ${path}`, "success");
+    form.reset();
+    categorySelect.value = category;
+    updatePathPreview();
+  } catch (err) {
+    console.error(err);
+    setStatus("저장 실패: 토큰 권한 또는 저장소 설정을 확인해주세요.", "error");
+  } finally {
+    saveBtn.disabled = false;
+  }
 });
