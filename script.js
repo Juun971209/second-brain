@@ -1,16 +1,50 @@
+// Storage access can throw (Safari private mode, some in-app webviews with
+// storage disabled, etc). A single uncaught throw here would stop the whole
+// script and silently disable every button below it, so all storage access
+// goes through these safe wrappers.
+function safeGet(storage, key) {
+  try {
+    return storage.getItem(key);
+  } catch (err) {
+    console.warn("storage read failed:", key, err);
+    return null;
+  }
+}
+
+function safeSet(storage, key, value) {
+  try {
+    storage.setItem(key, value);
+  } catch (err) {
+    console.warn("storage write failed:", key, err);
+  }
+}
+
+function safeRemove(storage, key) {
+  try {
+    storage.removeItem(key);
+  } catch (err) {
+    console.warn("storage remove failed:", key, err);
+  }
+}
+
+function prefersDark() {
+  try {
+    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+  } catch (err) {
+    return false;
+  }
+}
+
 // --- Theme toggle ---
 const root = document.documentElement;
 const themeToggle = document.getElementById("themeToggle");
 
 function applyTheme(theme) {
   root.setAttribute("data-theme", theme);
-  localStorage.setItem("theme", theme);
+  safeSet(localStorage, "theme", theme);
 }
 
-applyTheme(
-  localStorage.getItem("theme") ||
-    (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
-);
+applyTheme(safeGet(localStorage, "theme") || (prefersDark() ? "dark" : "light"));
 
 themeToggle.addEventListener("click", () => {
   const current = root.getAttribute("data-theme");
@@ -33,11 +67,11 @@ const persistTokenInput = document.getElementById("persistToken");
 
 function getSettings() {
   return {
-    owner: localStorage.getItem("gh_owner") || "Juun971209",
-    repo: localStorage.getItem("gh_repo") || "second-brain",
-    branch: localStorage.getItem("gh_branch") || "main",
-    token: sessionStorage.getItem("gh_token") || localStorage.getItem("gh_token") || "",
-    persisted: Boolean(localStorage.getItem("gh_token")),
+    owner: safeGet(localStorage, "gh_owner") || "Juun971209",
+    repo: safeGet(localStorage, "gh_repo") || "second-brain",
+    branch: safeGet(localStorage, "gh_branch") || "main",
+    token: safeGet(sessionStorage, "gh_token") || safeGet(localStorage, "gh_token") || "",
+    persisted: Boolean(safeGet(localStorage, "gh_token")),
   };
 }
 
@@ -62,17 +96,17 @@ settingsOverlay.addEventListener("click", (e) => {
 });
 
 settingsSave.addEventListener("click", () => {
-  localStorage.setItem("gh_owner", ghOwnerInput.value.trim() || "Juun971209");
-  localStorage.setItem("gh_repo", ghRepoInput.value.trim() || "second-brain");
-  localStorage.setItem("gh_branch", ghBranchInput.value.trim() || "main");
+  safeSet(localStorage, "gh_owner", ghOwnerInput.value.trim() || "Juun971209");
+  safeSet(localStorage, "gh_repo", ghRepoInput.value.trim() || "second-brain");
+  safeSet(localStorage, "gh_branch", ghBranchInput.value.trim() || "main");
 
   const token = ghTokenInput.value.trim();
   if (persistTokenInput.checked) {
-    localStorage.setItem("gh_token", token);
-    sessionStorage.removeItem("gh_token");
+    safeSet(localStorage, "gh_token", token);
+    safeRemove(sessionStorage, "gh_token");
   } else {
-    sessionStorage.setItem("gh_token", token);
-    localStorage.removeItem("gh_token");
+    safeSet(sessionStorage, "gh_token", token);
+    safeRemove(localStorage, "gh_token");
   }
 
   closeSettings();
@@ -80,8 +114,8 @@ settingsSave.addEventListener("click", () => {
 });
 
 settingsClear.addEventListener("click", () => {
-  sessionStorage.removeItem("gh_token");
-  localStorage.removeItem("gh_token");
+  safeRemove(sessionStorage, "gh_token");
+  safeRemove(localStorage, "gh_token");
   ghTokenInput.value = "";
   persistTokenInput.checked = false;
   setStatus("토큰을 삭제했어요.", "success");
