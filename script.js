@@ -160,12 +160,25 @@ async function githubDelete(owner, repo, branch, token, path, sha, message) {
   if (!res.ok) throw new Error(`GitHub API ${res.status}: ${await res.text()}`);
 }
 
-async function githubListDir(owner, repo, branch, token, path) {
+// Reads (unlike writes) work without a token on a public repo. If the saved
+// token is stale/expired/malformed, GitHub returns 401/403 even for content
+// that's perfectly readable anonymously — so retry once without it instead
+// of failing the whole "조회" view over a token that isn't even needed here.
+async function githubGetRaw(url, token) {
   const headers = { Accept: "application/vnd.github+json" };
   if (token) headers.Authorization = `token ${token}`;
-  const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`, { headers });
+  let res = await fetch(url, { headers });
+  if (!res.ok && token && (res.status === 401 || res.status === 403)) {
+    console.warn(`GitHub API ${res.status} with saved token, retrying ${url} without it`);
+    res = await fetch(url, { headers: { Accept: "application/vnd.github+json" } });
+  }
+  return res;
+}
+
+async function githubListDir(owner, repo, branch, token, path) {
+  const res = await githubGetRaw(`https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`, token);
   if (res.status === 404) return [];
-  if (!res.ok) throw new Error(`GitHub API ${res.status}`);
+  if (!res.ok) throw new Error(`GitHub API ${res.status}: ${await res.text()}`);
   return res.json();
 }
 
@@ -228,13 +241,12 @@ function normalizeCategoryName(str) {
 }
 
 async function fetchCategoriesFile(owner, repo, branch, token) {
-  const headers = { Accept: "application/vnd.github+json" };
-  if (token) headers.Authorization = `token ${token}`;
-  const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/categories.json?ref=${branch}`, {
-    headers,
-  });
+  const res = await githubGetRaw(
+    `https://api.github.com/repos/${owner}/${repo}/contents/categories.json?ref=${branch}`,
+    token
+  );
   if (res.status === 404) return { list: null, sha: null };
-  if (!res.ok) throw new Error(`GitHub API ${res.status}`);
+  if (!res.ok) throw new Error(`GitHub API ${res.status}: ${await res.text()}`);
   const data = await res.json();
   const list = JSON.parse(base64ToUtf8(data.content));
   return { list, sha: data.sha };
@@ -725,11 +737,12 @@ async function openNoteDetail(note) {
 
   try {
     const { token } = getSettings();
-    const headers = {};
-    if (token) headers.Authorization = `token ${token}`;
-
-    const res = await fetch(note.download_url, { headers });
-    if (!res.ok) throw new Error(`GitHub ${res.status}`);
+    let res = await fetch(note.download_url, token ? { headers: { Authorization: `token ${token}` } } : {});
+    if (!res.ok && token && (res.status === 401 || res.status === 403)) {
+      console.warn(`GitHub ${res.status} with saved token, retrying ${note.download_url} without it`);
+      res = await fetch(note.download_url);
+    }
+    if (!res.ok) throw new Error(`GitHub ${res.status}: ${await res.text()}`);
     const raw = await res.text();
     const { meta, body } = parseFrontmatter(raw);
 
