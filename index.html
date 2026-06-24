@@ -30,14 +30,7 @@
       <form id="noteForm">
         <div class="field">
           <label for="category">카테고리</label>
-          <select id="category" required>
-            <option value="clients">clients</option>
-            <option value="insights">insights</option>
-            <option value="templates">templates</option>
-            <option value="study">study</option>
-            <option value="prompts">prompts</option>
-            <option value="logs">logs</option>
-          </select>
+          <select id="category" required></select>
         </div>
 
         <div class="field">
@@ -64,12 +57,6 @@
 
       <div class="category-tabs" id="categoryTabs">
         <button class="cat-tab active" data-category="all" type="button">전체</button>
-        <button class="cat-tab" data-category="clients" type="button">clients</button>
-        <button class="cat-tab" data-category="insights" type="button">insights</button>
-        <button class="cat-tab" data-category="templates" type="button">templates</button>
-        <button class="cat-tab" data-category="study" type="button">study</button>
-        <button class="cat-tab" data-category="prompts" type="button">prompts</button>
-        <button class="cat-tab" data-category="logs" type="button">logs</button>
       </div>
 
       <p id="browseStatus" class="status-msg" role="status" aria-live="polite"></p>
@@ -77,9 +64,35 @@
     </section>
 
     <section class="note-detail" id="detailView" hidden>
-      <button id="backBtn" class="btn btn-ghost" type="button">← 목록으로</button>
-      <p id="noteDetailMeta" class="note-detail-meta"></p>
-      <article id="noteDetailContent" class="markdown-body"></article>
+      <div class="detail-actions">
+        <button id="backBtn" class="btn btn-ghost" type="button">← 목록으로</button>
+        <div class="detail-actions-right">
+          <button id="editBtn" class="btn btn-ghost" type="button">✏️ 수정</button>
+          <button id="deleteBtn" class="btn btn-ghost btn-danger" type="button">🗑️ 삭제</button>
+        </div>
+      </div>
+
+      <div id="detailViewMode">
+        <p id="noteDetailMeta" class="note-detail-meta"></p>
+        <article id="noteDetailContent" class="markdown-body"></article>
+      </div>
+
+      <div id="detailEditMode" hidden>
+        <div class="field">
+          <label for="editTitle">제목</label>
+          <input id="editTitle" type="text" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="editContent">내용 (마크다운)</label>
+          <textarea id="editContent" rows="14"></textarea>
+        </div>
+        <div class="modal-actions">
+          <button id="editCancelBtn" class="btn btn-ghost" type="button">취소</button>
+          <button id="editSaveBtn" class="btn btn-primary" type="button">저장</button>
+        </div>
+      </div>
+
+      <p id="detailStatus" class="status-msg" role="status" aria-live="polite"></p>
     </section>
   </main>
 
@@ -122,10 +135,32 @@
         </label>
       </div>
 
+      <div class="field">
+        <label>카테고리 관리</label>
+        <ul id="categoryManagerList" class="category-manager-list"></ul>
+        <div class="category-add-row">
+          <input id="newCategoryInput" type="text" placeholder="새 카테고리 이름" autocomplete="off" />
+          <button id="addCategoryBtn" class="btn btn-ghost" type="button">추가</button>
+        </div>
+        <p id="categoryManagerStatus" class="status-msg"></p>
+      </div>
+
       <div class="modal-actions">
         <button id="settingsClear" class="btn btn-ghost" type="button">토큰 삭제</button>
         <button id="settingsCancel" class="btn btn-ghost" type="button">닫기</button>
         <button id="settingsSave" class="btn btn-primary" type="button">저장</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Generic confirm modal (note delete, category delete) -->
+  <div id="confirmOverlay" class="overlay" hidden>
+    <div class="modal">
+      <h2 id="confirmTitle">정말 삭제할까요?</h2>
+      <p id="confirmMessage" class="hint"></p>
+      <div class="modal-actions">
+        <button id="confirmCancelBtn" class="btn btn-ghost" type="button">취소</button>
+        <button id="confirmOkBtn" class="btn btn-primary btn-danger" type="button">삭제</button>
       </div>
     </div>
   </div>

@@ -147,6 +147,21 @@ input:focus, select:focus, textarea:focus {
 
 .btn-block { width: 100%; }
 
+.btn-sm {
+  padding: 6px 10px;
+  font-size: 0.8rem;
+}
+
+.btn-danger {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.btn-danger.btn-primary {
+  background: var(--danger);
+  color: #fff;
+}
+
 .status-msg {
   min-height: 1.4em;
   font-size: 0.88rem;
@@ -212,6 +227,36 @@ input:focus, select:focus, textarea:focus {
 }
 
 .field-row { flex-direction: row; align-items: flex-start; }
+
+/* Category manager (inside settings modal) */
+.category-manager-list {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.category-manager-item {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.category-manager-item input {
+  flex: 1;
+  padding: 8px 10px;
+}
+
+.category-add-row {
+  display: flex;
+  gap: 6px;
+}
+
+.category-add-row input {
+  flex: 1;
+}
 
 .checkbox-label {
   display: flex;
@@ -329,6 +374,19 @@ input:focus, select:focus, textarea:focus {
 }
 
 /* Note detail */
+.detail-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.detail-actions-right {
+  display: flex;
+  gap: 8px;
+}
+
 .note-detail-meta {
   font-size: 0.85rem;
   color: var(--text-soft);

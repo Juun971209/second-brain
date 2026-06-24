@@ -123,6 +123,50 @@ function utf8ToBase64(str) {
   return btoa(unescape(encodeURIComponent(str)));
 }
 
+function base64ToUtf8(b64) {
+  return decodeURIComponent(escape(atob(b64.replace(/\n/g, ""))));
+}
+
+// --- Category sync (reads categories.json managed by the web app) ---
+const DEFAULT_CATEGORIES = ["insights", "clients", "templates", "study", "prompts", "logs"];
+
+function renderCategoryOptions(categories) {
+  const previous = categorySelect.value;
+  categorySelect.innerHTML = "";
+  for (const c of categories) {
+    const opt = document.createElement("option");
+    opt.value = c;
+    opt.textContent = c;
+    categorySelect.appendChild(opt);
+  }
+  if (categories.includes(previous)) categorySelect.value = previous;
+  updatePathPreview();
+}
+
+async function fetchCategories(owner, repo, branch, token) {
+  const headers = { Accept: "application/vnd.github+json" };
+  if (token) headers.Authorization = `token ${token}`;
+  const res = await fetch(
+    `https://api.github.com/repos/${owner}/${repo}/contents/categories.json?ref=${branch}`,
+    { headers }
+  );
+  if (!res.ok) throw new Error(`GitHub API ${res.status}`);
+  const data = await res.json();
+  const list = JSON.parse(base64ToUtf8(data.content));
+  if (!Array.isArray(list) || !list.length) throw new Error("invalid categories.json");
+  return list;
+}
+
+async function loadCategories() {
+  const { owner, repo, branch, token } = await getSettings();
+  try {
+    const list = await fetchCategories(owner, repo, branch, token);
+    renderCategoryOptions(list);
+  } catch (err) {
+    console.warn("카테고리 목록을 불러오지 못했어요:", err);
+  }
+}
+
 async function getExistingFileSha(owner, repo, path, token, branch) {
   const res = await fetch(
     `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`,
@@ -297,6 +341,9 @@ async function extractFromTab(tab) {
 }
 
 async function init() {
+  renderCategoryOptions(DEFAULT_CATEGORIES);
+  loadCategories();
+
   const tab = await getActiveTab();
   if (tab) {
     titleInput.value = tab.title || "";
