@@ -614,11 +614,11 @@ async function fetchCategoryNotes(owner, repo, branch, token, category) {
 }
 
 async function loadAllNotes() {
+  // Reads work without a token on a public repo (githubListDir/githubGetRaw
+  // already fall back to anonymous on 401/403), so don't gate the fetch on
+  // having one — that skipped the network call entirely whenever the saved
+  // token was empty (e.g. session-only token cleared on tab close).
   const { owner, repo, branch, token } = getSettings();
-  if (!token) {
-    setBrowseStatus("먼저 ⚙️ 설정에서 GitHub 토큰을 등록해주세요.", "error");
-    return;
-  }
 
   setBrowseStatus("노트를 불러오는 중...", "");
   try {
