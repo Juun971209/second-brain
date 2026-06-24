@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="theme-color" content="#0f1115" />
+<title>My Second Brain</title>
+<meta name="description" content="개인 지식 저장소 — 생각, 노트, 링크를 모아두는 공간" />
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="nav">
+    <div class="nav-inner">
+      <a class="brand" href="#top">🧠 Second Brain</a>
+      <nav class="nav-links">
+        <a href="#about">소개</a>
+        <a href="#notes">노트</a>
+        <a href="#contact">연락처</a>
+      </nav>
+      <button id="themeToggle" class="icon-btn" aria-label="테마 전환" title="다크/라이트 모드 전환">🌓</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="top" class="hero">
+      <h1>안녕하세요, 저의<br /><span class="accent">세컨드 브레인</span>입니다.</h1>
+      <p class="hero-sub">생각, 배운 것, 읽은 것들을 정리해두는 개인 공간이에요.</p>
+      <div class="hero-actions">
+        <a href="#notes" class="btn btn-primary">노트 보러가기</a>
+        <a href="#about" class="btn btn-ghost">소개 보기</a>
+      </div>
+    </section>
+
+    <section id="about" class="about">
+      <h2>소개</h2>
+      <p>
+        이곳은 제가 배우고 생각한 것들을 기록하고 다시 꺼내보기 위한 공간입니다.
+        아래 노트 섹션에서 카테고리별로 글을 모아두었어요. 이 텍스트는 자유롭게 수정해서
+        본인 소개로 바꿔보세요.
+      </p>
+    </section>
+
+    <section id="notes" class="notes">
+      <h2>노트</h2>
+
+      <div class="controls">
+        <input id="searchInput" type="search" placeholder="노트 검색..." aria-label="노트 검색" />
+        <div id="filterTags" class="filter-tags"></div>
+      </div>
+
+      <div id="notesGrid" class="notes-grid"></div>
+      <p id="emptyState" class="empty-state" hidden>일치하는 노트가 없어요.</p>
+    </section>
+
+    <section id="contact" class="contact">
+      <h2>연락처</h2>
+      <p>
+        <a href="mailto:dlwnsgud114@gmail.com">dlwnsgud114@gmail.com</a>
+      </p>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>Made with ❤️ · 마지막 업데이트는 코드에서 자유롭게 수정하세요</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
