@@ -176,6 +176,10 @@ input:focus, select:focus, textarea:focus {
   z-index: 100;
 }
 
+.overlay[hidden] {
+  display: none;
+}
+
 .modal {
   background: var(--bg);
   border: 1px solid var(--border);
