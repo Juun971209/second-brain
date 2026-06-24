@@ -167,10 +167,13 @@ async function githubDelete(owner, repo, branch, token, path, sha, message) {
 async function githubGetRaw(url, token) {
   const headers = { Accept: "application/vnd.github+json" };
   if (token) headers.Authorization = `token ${token}`;
+  console.debug(`[SB] githubGetRaw: GET ${url} (withToken=${Boolean(token)})`);
   let res = await fetch(url, { headers });
+  console.debug(`[SB] githubGetRaw: ${url} -> ${res.status}`);
   if (!res.ok && token && (res.status === 401 || res.status === 403)) {
-    console.warn(`GitHub API ${res.status} with saved token, retrying ${url} without it`);
+    console.warn(`[SB] githubGetRaw: ${res.status} with saved token, retrying ${url} without it`);
     res = await fetch(url, { headers: { Accept: "application/vnd.github+json" } });
+    console.debug(`[SB] githubGetRaw: retry ${url} -> ${res.status}`);
   }
   return res;
 }
@@ -452,16 +455,19 @@ addCategoryBtn.addEventListener("click", async () => {
 });
 
 async function loadCategories() {
+  console.debug("[SB] loadCategories: start");
   const { owner, repo, branch, token } = getSettings();
   try {
     const { list, sha } = await fetchCategoriesFile(owner, repo, branch, token);
+    console.debug("[SB] loadCategories: categories.json fetched ->", list);
     if (list && Array.isArray(list) && list.length) {
       CATEGORIES = list;
       categoriesSha = sha;
     }
   } catch (err) {
-    console.warn("카테고리 목록을 불러오지 못했어요:", err);
+    console.warn("[SB] loadCategories: failed to fetch categories.json, keeping defaults", err);
   }
+  console.debug("[SB] loadCategories: final CATEGORIES =", CATEGORIES);
   renderCategorySelectOptions();
   renderCategoryTabs();
   renderCategoryManagerList();
@@ -578,8 +584,13 @@ function showView(view) {
 
 tabWrite.addEventListener("click", () => showView("write"));
 tabBrowse.addEventListener("click", () => {
+  console.debug("[SB] tabBrowse clicked, notesLoaded =", notesLoaded);
   showView("browse");
-  if (!notesLoaded) loadAllNotes();
+  if (!notesLoaded) {
+    loadAllNotes();
+  } else {
+    console.debug("[SB] tabBrowse: notesLoaded already true, skipping loadAllNotes()");
+  }
 });
 
 // --- Note browsing ---
@@ -603,7 +614,9 @@ function parseNoteFilename(category, name) {
 }
 
 async function fetchCategoryNotes(owner, repo, branch, token, category) {
+  console.debug(`[SB] fetchCategoryNotes: requesting ${category}/`);
   const files = await githubListDir(owner, repo, branch, token, category);
+  console.debug(`[SB] fetchCategoryNotes: ${category}/ returned ${files.length} entries`);
   return files
     .filter((f) => f.type === "file")
     .map((f) => {
@@ -619,6 +632,7 @@ async function loadAllNotes() {
   // having one — that skipped the network call entirely whenever the saved
   // token was empty (e.g. session-only token cleared on tab close).
   const { owner, repo, branch, token } = getSettings();
+  console.debug("[SB] loadAllNotes: start, CATEGORIES =", CATEGORIES, "hasToken =", Boolean(token));
 
   setBrowseStatus("노트를 불러오는 중...", "");
   try {
@@ -627,10 +641,11 @@ async function loadAllNotes() {
     );
     allNotes = results.flat().sort((a, b) => b.date.localeCompare(a.date));
     notesLoaded = true;
+    console.debug(`[SB] loadAllNotes: done, ${allNotes.length} notes loaded`);
     setBrowseStatus("", "");
     renderNoteList();
   } catch (err) {
-    console.error(err);
+    console.error("[SB] loadAllNotes: failed", err);
     setBrowseStatus("노트를 불러오지 못했어요. 토큰 권한을 확인해주세요.", "error");
   }
 }
