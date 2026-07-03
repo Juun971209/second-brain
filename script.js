@@ -615,15 +615,24 @@ function parseNoteFilename(category, name) {
 
 async function fetchCategoryNotes(owner, repo, branch, token, category) {
   console.debug(`[SB] fetchCategoryNotes: requesting ${category}/`);
-  const files = await githubListDir(owner, repo, branch, token, category);
-  console.debug(`[SB] fetchCategoryNotes: ${category}/ returned ${files.length} entries`);
-  return files
-    .filter((f) => f.type === "file")
-    .map((f) => {
-      const parsed = parseNoteFilename(category, f.name);
-      return parsed && { ...parsed, path: f.path, sha: f.sha };
-    })
-    .filter(Boolean);
+
+  async function walk(path) {
+    const entries = await githubListDir(owner, repo, branch, token, path);
+    const notes = [];
+    for (const entry of entries) {
+      if (entry.type === "dir") {
+        notes.push(...(await walk(entry.path)));
+      } else if (entry.type === "file") {
+        const parsed = parseNoteFilename(category, entry.name);
+        if (parsed) notes.push({ ...parsed, path: entry.path, sha: entry.sha });
+      }
+    }
+    return notes;
+  }
+
+  const notes = await walk(category);
+  console.debug(`[SB] fetchCategoryNotes: ${category}/ returned ${notes.length} entries (recursive)`);
+  return notes;
 }
 
 async function loadAllNotes() {
